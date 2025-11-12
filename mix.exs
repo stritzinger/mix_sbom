@@ -14,7 +14,8 @@ defmodule SBoM.MixProject do
       description: description(),
       package: package(),
       docs: docs(),
-      source_url: "https://github.com/voltone/sbom"
+      source_url: "https://github.com/voltone/sbom",
+      test_ignore_filters: [~r/test\/fixtures/]
     ]
   end
 
