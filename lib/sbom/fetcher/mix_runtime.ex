@@ -20,9 +20,9 @@ defmodule SBoM.Fetcher.MixRuntime do
   ## Examples
 
       iex> %{
-      ...>   burrito: %{
-      ...>     scm: Hex.SCM,
-      ...>     dependencies: [:jason, :req, :typed_struct, :kernel, :stdlib, :elixir, :logger, :eex],
+      ...>   stdlib: %{
+      ...>     scm: SBoM.SCM.System,
+      ...>     dependencies: [:kernel],
       ...>     mix_config: _config,
       ...>     relationship: :direct,
       ...>     scope: :runtime,

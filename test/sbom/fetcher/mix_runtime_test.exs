@@ -60,16 +60,8 @@ defmodule SBoM.Fetcher.MixRuntimeTest do
                    version: nil,
                    mix_config: [],
                    scm: Hex.SCM,
-                   dependencies: [:kernel, :stdlib, :elixir, :logger],
-                   relationship: :direct
-                 },
-                 logger: %{
-                   scope: :runtime,
-                   version: nil,
-                   mix_config: [{:app, :logger} | _logger_rest],
-                   scm: SBoM.SCM.System,
                    dependencies: [],
-                   relationship: :indirect
+                   relationship: :direct
                  }
                } = MixRuntime.fetch()
       end)

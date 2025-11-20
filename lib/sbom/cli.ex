@@ -153,6 +153,6 @@ defmodule SBoM.CLI do
 
   defp validate_schema!(schema) do
     schema in @schema_versions ||
-      raise "invalid cyclonedx schema version, available versions are #{Enum.join(@schema_versions, ", ")}"
+      Mix.raise("invalid cyclonedx schema version, available versions are #{Enum.join(@schema_versions, ", ")}")
   end
 end
