@@ -3,11 +3,6 @@ defmodule SBoM.Application do
 
   use Application
 
-  alias Burrito.Util.Args
-  alias SBoM.Escript
-
-  require Logger
-
   @impl Application
   def start(_start_type, _start_args) do
     Mix.Hex.start()
@@ -16,12 +11,25 @@ defmodule SBoM.Application do
     Mix.SCM.append(SBoM.SCM.System)
     Mix.SCM.append(Hex.SCM)
 
-    if Burrito.Util.running_standalone?() do
-      Escript.main(Args.argv())
-
-      System.stop(0)
-    end
+    run_cli()
 
     Supervisor.start_link([], strategy: :one_for_one)
+  end
+
+  @spec run_cli() :: :ok | no_return()
+  case Code.ensure_loaded(Burrito) do
+    {:module, Burrito} ->
+      defp run_cli do
+        if Burrito.Util.running_standalone?() do
+          SBoM.Escript.main(Burrito.Util.Args.argv())
+
+          System.stop(0)
+        end
+
+        :ok
+      end
+
+    _ ->
+      defp run_cli, do: :ok
   end
 end

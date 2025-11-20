@@ -28,7 +28,19 @@ defmodule SBoM.MixProject do
   def application do
     [
       mod: {SBoM.Application, []},
-      extra_applications: [:mix, :xmerl, :logger]
+      extra_applications: [:mix, :xmerl, :logger],
+      included_applications: [:hex]
+    ]
+  end
+
+  def cli do
+    [
+      default_target: :local,
+      preferred_targets: [
+        release: :standalone,
+        # TODO: Remove once https://github.com/elixir-lang/elixir/issues/14930 is resolved
+        "escript.build": :escript
+      ]
     ]
   end
 
@@ -41,7 +53,6 @@ defmodule SBoM.MixProject do
   defp releases do
     [
       sbom: [
-        applications: [hex: :load],
         steps: [:assemble, &Burrito.wrap/1],
         burrito: [
           targets: [
@@ -65,13 +76,14 @@ defmodule SBoM.MixProject do
   defp deps do
     # styler:sort
     [
-      {:burrito, "~> 1.0"},
+      {:burrito, "~> 1.0", targets: [:standalone]},
       {:credo, "~> 1.0", only: [:dev], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:doctest_formatter, "~> 0.4.0", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.5", only: [:test], runtime: false},
-      {:hex, github: "hexpm/hex", tag: "v2.3.1", runtime: false},
+      # TODO: Remove once https://github.com/elixir-lang/elixir/issues/14930 is resolved
+      {:hex, github: "hexpm/hex", tag: "v2.3.1", runtime: false, targets: [:escript]},
       {:plug, "~> 1.0", only: [:test]},
       {:protobuf, "~> 0.15.0"},
       {:purl, "~> 0.3.0"},
