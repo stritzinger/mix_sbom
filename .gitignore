@@ -49,3 +49,6 @@ devenv.local.nix
 
 # Burrito
 /burrito_out
+
+# SBoM Files
+/bom.*
