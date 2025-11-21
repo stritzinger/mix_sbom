@@ -21,7 +21,14 @@ defmodule SBoM.MixProject do
       releases: releases(),
       escript: escript(),
       source_url: @source_url,
-      test_ignore_filters: [~r/test\/fixtures/]
+      test_ignore_filters: [~r/test\/fixtures/],
+      licenses: [
+        # Main License
+        "BSD-3-Clause",
+        # Appropriated Code from protobuf libary in
+        # lib/sbom/cyclonedx/json/encoder.ex
+        "Apache-2.0"
+      ]
     ]
   end
 
@@ -104,7 +111,6 @@ defmodule SBoM.MixProject do
   defp package do
     [
       maintainers: ["Erlang Ecosystem Foundation"],
-      licenses: ["BSD-3-Clause"],
       links: %{"GitHub" => @source_url}
     ]
   end

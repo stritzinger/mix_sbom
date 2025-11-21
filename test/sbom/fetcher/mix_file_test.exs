@@ -10,16 +10,30 @@ defmodule SBoM.Fetcher.MixFileTest do
   describe inspect(&MixFile.fetch/1) do
     @tag :tmp_dir
     @tag fixture_app: "app_locked"
-    test "generates valid manifest for 'app_locked' fixture", %{app_path: app_path} do
+    test "generates valid manifest for 'app_locked' fixture", %{app_name: app_name, app_path: app_path} do
       Util.in_project(app_path, fn _mix_module ->
         assert %{
-                 credo: %{
-                   scm: Hex.SCM,
-                   mix_dep: {:credo, "~> 1.7", [hex: "credo", build: _credo_build, dest: _credo_dest, repo: "hexpm"]},
-                   scope: :runtime,
-                   relationship: :direct
+                 ^app_name => %{
+                   runtime: true,
+                   optional: false,
+                   targets: :*,
+                   only: :*,
+                   licenses: ["MIT"],
+                   dependencies: [:logger, :elixir, :public_key, :credo, :mime, :os_mon, :expo, :heroicons],
+                   root: true,
+                   source_url: "https://github.com/example/app"
                  },
-                 expo: %{
+                 :credo => %{
+                   scm: Hex.SCM,
+                   mix_dep:
+                     {:credo, "~> 1.7",
+                      [hex: "credo", build: _credo_build, dest: _credo_dest, runtime: false, only: [:dev], repo: "hexpm"]},
+                   runtime: false,
+                   optional: false,
+                   only: [:dev],
+                   targets: :*
+                 },
+                 :expo => %{
                    scm: Git,
                    mix_dep:
                      {:expo, nil,
@@ -29,17 +43,20 @@ defmodule SBoM.Fetcher.MixFileTest do
                         build: _expo_build,
                         dest: _expo_dest
                       ]},
-                   scope: :runtime,
-                   relationship: :direct
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  },
-                 mime: %{
+                 :mime => %{
                    scm: Hex.SCM,
                    mix_dep: {:mime, "~> 2.0", [hex: "mime", build: _mime_build, dest: _mime_dest, repo: "hexpm"]},
-                   scope: :runtime,
-                   relationship: :direct
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  },
-                 heroicons: %{
-                   scope: :runtime,
+                 :heroicons => %{
                    scm: Git,
                    mix_dep:
                      {:heroicons, nil,
@@ -54,25 +71,34 @@ defmodule SBoM.Fetcher.MixFileTest do
                         compile: false,
                         depth: 1
                       ]},
-                   relationship: :direct
+                   runtime: false,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  },
-                 elixir: %{
-                   scope: :runtime,
+                 :elixir => %{
                    scm: SBoM.SCM.System,
                    mix_dep: {:elixir, "1.18.4", [app: :elixir, build: _elixir_build, dest: _elixir_dest]},
-                   relationship: :direct
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  },
-                 logger: %{
-                   scope: :runtime,
+                 :logger => %{
                    scm: SBoM.SCM.System,
                    mix_dep: {:logger, nil, [app: :logger, build: _logger_build, dest: _logger_dest]},
-                   relationship: :direct
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  },
-                 public_key: %{
-                   scope: :runtime,
+                 :public_key => %{
                    scm: SBoM.SCM.System,
                    mix_dep: {:public_key, nil, [app: :public_key, build: _public_key_build, dest: _public_key_dest]},
-                   relationship: :direct
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  }
                } = MixFile.fetch()
       end)
@@ -85,15 +111,19 @@ defmodule SBoM.Fetcher.MixFileTest do
         assert %{
                  credo: %{
                    mix_dep: {:credo, "~> 1.7", [hex: "credo", build: _credo_build, dest: _credo_dest, repo: "hexpm"]},
-                   relationship: :direct,
                    scm: Hex.SCM,
-                   scope: :runtime
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  },
                  path_dep: %{
-                   scope: :runtime,
                    scm: Mix.SCM.Path,
                    mix_dep: {:path_dep, nil, [dest: "/tmp", build: _path_dep_build, path: "/tmp"]},
-                   relationship: :direct
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
                  }
                } = MixFile.fetch()
       end)

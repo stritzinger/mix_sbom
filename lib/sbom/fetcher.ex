@@ -12,7 +12,6 @@ defmodule SBoM.Fetcher do
   """
 
   alias SBoM.SCM
-  # alias SBoM.Submission.Manifest.Dependency
 
   @type app_name() :: atom()
   @type mix_dep() :: {app_name(), requirement :: String.t(), opts :: Keyword.t()}
@@ -22,12 +21,17 @@ defmodule SBoM.Fetcher do
           optional(:version) => String.t(),
           optional(:mix_dep) => mix_dep(),
           optional(:mix_lock) => SCM.lock(),
-          optional(:scope) => :runtime | :optional | :development,
-          optional(:relationship) => :direct | :indirect,
+          optional(:runtime) => boolean(),
+          optional(:optional) => boolean(),
+          optional(:targets) => :* | [atom()],
+          optional(:only) => :* | [atom()],
           optional(:dependencies) => [app_name()],
           optional(:mix_config) => Keyword.t(),
           optional(:package_url) => Purl.t(),
-          optional(:metadata) => map()
+          optional(:licenses) => [String.t()],
+          optional(:root) => boolean(),
+          optional(:source_url) => String.t(),
+          optional(:links) => SBoM.Fetcher.Links.t()
         }
 
   @doc """
@@ -46,8 +50,10 @@ defmodule SBoM.Fetcher do
         my_dep: %{
           scm: Mix.SCM.Hex,
           version: "0.1.0",
-          scope: :runtime,
-          relationship: :direct
+          optional: true,
+          runtime: false,
+          targets: [:host],
+          only: [:dev, :test]
         }
       }
 
@@ -61,20 +67,26 @@ defmodule SBoM.Fetcher do
     elixir: %{
       scm: SBoM.SCM.System,
       mix_dep: {:elixir, nil, []},
-      relationship: :direct,
-      scope: :runtime
+      optional: false,
+      runtime: true,
+      targets: :*,
+      only: :*
     },
     stdlib: %{
       scm: SBoM.SCM.System,
       mix_dep: {:stdlib, nil, []},
-      relationship: :direct,
-      scope: :runtime
+      optional: false,
+      runtime: true,
+      targets: :*,
+      only: :*
     },
     kernel: %{
       scm: SBoM.SCM.System,
       mix_dep: {:kernel, nil, []},
-      relationship: :direct,
-      scope: :runtime
+      optional: false,
+      runtime: true,
+      targets: :*,
+      only: :*
     }
   }
 
@@ -90,9 +102,10 @@ defmodule SBoM.Fetcher do
       ...>   # SBoM.Submission.Manifest.Dependency
       ...>   "burrito" => %{
       ...>     package_url: %Purl{type: "hex", name: "burrito"},
-      ...>     metadata: %{},
-      ...>     relationship: :direct,
-      ...>     scope: :runtime,
+      ...>     optional: false,
+      ...>     runtime: true,
+      ...>     targets: [:standalone],
+      ...>     only: :*,
       ...>     dependencies: _dependencies
       ...>   }
       ...> } = SBoM.Fetcher.fetch()
@@ -127,9 +140,15 @@ defmodule SBoM.Fetcher do
   @spec merge_property(key :: atom(), left :: value, right :: value) :: value when value: term()
   defp merge_property(key, left, right)
   defp merge_property(_key, value, value), do: value
-  defp merge_property(:relationship, :direct, _right), do: :direct
-  defp merge_property(:relationship, _left, :direct), do: :direct
   defp merge_property(:dependencies, left, right), do: Enum.uniq(left ++ right)
+  defp merge_property(:runtime, left, right), do: left or right
+  defp merge_property(:optional, left, right), do: left and right
+  defp merge_property(:targets, :*, _right), do: :*
+  defp merge_property(:targets, _left, :*), do: :*
+  defp merge_property(:targets, left, right), do: Enum.uniq(left ++ right)
+  defp merge_property(:only, :*, _right), do: :*
+  defp merge_property(:only, _left, :*), do: :*
+  defp merge_property(:only, left, right), do: Enum.uniq(left ++ right)
   defp merge_property(_key, _left, right), do: right
 
   @spec transform_all(dependencies :: %{app_name() => dependency()}) :: %{
@@ -162,38 +181,18 @@ defmodule SBoM.Fetcher do
     purl = package_url(dependency, app)
 
     purl =
-      case mix_config_source_url(dependency[:mix_config]) do
+      case dependency[:source_url] do
         nil -> purl
         url -> %{purl | qualifiers: Map.put_new(purl.qualifiers, "vcs_url", url)}
       end
 
-    metadata =
-      %{"license" => Enum.join(dependency[:mix_config][:package][:licenses] || [], " AND ")}
-
-    # Dependency{
-    %{
-      package_url: purl,
-      metadata: drop_empty(metadata),
-      relationship: dependency[:relationship],
-      scope: dependency[:scope],
-      dependencies: sub_dependencies
-    }
-  end
-
-  @spec mix_config_source_url(mix_config :: Keyword.t()) :: String.t() | nil
-  defp mix_config_source_url(mix_config) do
-    links =
-      Map.new(mix_config[:package][:links] || %{}, fn {key, value} ->
-        {String.downcase(to_string(key)), value}
-      end)
-
-    mix_config[:source_url] ||
-      links["github"] ||
-      links["gitlab"] ||
-      links["git"] ||
-      links["source"] ||
-      links["repository"] ||
-      links["bitbucket"]
+    Map.merge(
+      dependency,
+      %{
+        package_url: purl,
+        dependencies: sub_dependencies
+      }
+    )
   end
 
   @spec package_url(dependency(), app_name()) :: Purl.t()
@@ -220,12 +219,28 @@ defmodule SBoM.Fetcher do
     end
   end
 
+  defp package_url(%{scm: SBoM.SCM.System} = dependency, app) do
+    SBoM.SCM.SBoM.SCM.System.mix_dep_to_purl({app, "*", []}, dependency[:version])
+  end
+
   defp package_url(dependency, app) do
-    Purl.new!(%Purl{
-      type: "generic",
-      name: Atom.to_string(app),
-      version: dependency[:version]
-    })
+    fallback =
+      Purl.new!(%Purl{
+        type: "generic",
+        name: Atom.to_string(app),
+        version: dependency[:version]
+      })
+
+    case dependency[:source_url] do
+      nil ->
+        fallback
+
+      url ->
+        case Purl.from_resource_uri(url, dependency[:version]) do
+          {:ok, purl} -> purl
+          :error -> fallback
+        end
+    end
   end
 
   @spec lock_dependencies(dependency()) :: [app_name()]

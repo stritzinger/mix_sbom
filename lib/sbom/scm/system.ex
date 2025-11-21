@@ -90,9 +90,7 @@ defmodule SBoM.SCM.SBoM.SCM.System do
 
   def mix_dep_to_purl({app, _version_requirement, _opts}, _version) when is_elixir_app(app) do
     Purl.new!(%Purl{
-      type: "generic",
-      # TODO: Use once the spec is merged
-      # type: "otp",
+      type: "otp",
       name: to_string(app),
       subpath: ["lib", to_string(app)],
       qualifiers: %{"vcs_url" => "git+https://github.com/elixir-lang/elixir.git"}
@@ -101,9 +99,7 @@ defmodule SBoM.SCM.SBoM.SCM.System do
 
   def mix_dep_to_purl({app, _version_requirement, _opts}, _version) when is_erlang_app(app) do
     Purl.new!(%Purl{
-      type: "generic",
-      # TODO: Use once the spec is merged
-      # type: "otp",
+      type: "otp",
       name: to_string(app),
       subpath: ["lib", to_string(app)],
       qualifiers: %{"vcs_url" => "git+https://github.com/erlang/otp.git"}
@@ -112,11 +108,16 @@ defmodule SBoM.SCM.SBoM.SCM.System do
 
   def mix_dep_to_purl({app, _version_requirement, _opts}, _version) when is_hex_app(app) do
     Purl.new!(%Purl{
-      type: "generic",
-      # TODO: Use once the spec is merged
-      # type: "otp",
+      type: "otp",
       name: to_string(app),
       qualifiers: %{"vcs_url" => "git+https://github.com/hexpm/hex.git"}
+    })
+  end
+
+  def mix_dep_to_purl({app, _version_requirement, _opts}, _version) do
+    Purl.new!(%Purl{
+      type: "otp",
+      name: to_string(app)
     })
   end
 end

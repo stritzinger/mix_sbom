@@ -10,6 +10,7 @@ defmodule SBoM.Fetcher.MixRuntime do
   @behaviour SBoM.Fetcher
 
   alias SBoM.Fetcher
+  alias SBoM.Fetcher.Links
 
   @doc """
   Fetches all runtime dependencies from the current Mix project.
@@ -24,8 +25,8 @@ defmodule SBoM.Fetcher.MixRuntime do
       ...>     scm: SBoM.SCM.System,
       ...>     dependencies: [:kernel],
       ...>     mix_config: _config,
-      ...>     relationship: :direct,
-      ...>     scope: :runtime,
+      ...>     optional: false,
+      ...>     runtime: true,
       ...>     version: _version
       ...>   }
       ...> } =
@@ -36,13 +37,6 @@ defmodule SBoM.Fetcher.MixRuntime do
   @impl Fetcher
   def fetch do
     app = Mix.Project.config()[:app]
-
-    root_deps =
-      [depth: 1]
-      |> Mix.Project.deps_tree()
-      |> Map.keys()
-      |> Enum.concat(get_app_dependencies(app, true))
-      |> Enum.uniq()
 
     deps_tree = full_runtime_tree(app)
 
@@ -66,7 +60,10 @@ defmodule SBoM.Fetcher.MixRuntime do
         Map.put_new(deps_scms, dep, SBoM.SCM.System)
       end)
 
-    Map.new(deps_tree, &resolve_dep(&1, root_deps, deps_paths, deps_scms))
+    deps_tree
+    |> Enum.map(&resolve_dep(&1, deps_paths, deps_scms))
+    |> Enum.reject(&is_nil/1)
+    |> Map.new()
   end
 
   @spec full_runtime_tree(app :: Fetcher.app_name()) :: %{
@@ -116,13 +113,10 @@ defmodule SBoM.Fetcher.MixRuntime do
 
   @spec resolve_dep(
           dep :: {Fetcher.app_name(), [Fetcher.app_name()]},
-          root_deps :: [Fetcher.app_name()],
           deps_paths :: %{Fetcher.app_name() => Path.t()},
           deps_scms :: %{Fetcher.app_name() => module()}
         ) :: {Fetcher.app_name(), Fetcher.dependency()}
-  defp resolve_dep({app, dependencies}, root_deps, deps_paths, deps_scms) do
-    relationship = if(app in root_deps, do: :direct, else: :indirect)
-
+  defp resolve_dep({app, dependencies}, deps_paths, deps_scms) do
     with {:ok, dep_path} <- Map.fetch(deps_paths, app),
          {:ok, dep_scm} <- Map.fetch(deps_scms, app) do
       config =
@@ -134,17 +128,23 @@ defmodule SBoM.Fetcher.MixRuntime do
           []
         end
 
+      links = config[:links] || config[:package][:links] || %{}
+      source_url = config[:source_url] || Links.source_url(links)
+
       {app,
        %{
          scm: dep_scm,
          version: config[:version],
-         scope: :runtime,
-         relationship: relationship,
+         runtime: true,
+         optional: false,
          dependencies: dependencies,
-         mix_config: config
+         mix_config: config,
+         licenses: config[:licenses] || config[:package][:licenses],
+         source_url: source_url,
+         links: links
        }}
     else
-      :error -> {app, %{scope: :runtime, relationship: relationship}}
+      :error -> nil
     end
   end
 end

@@ -49,6 +49,12 @@ defmodule SBoM.CycloneDX do
           | SBoM.Cyclonedx.V15.Tool.t()
           | SBoM.Cyclonedx.V16.Tool.t()
           | SBoM.Cyclonedx.V17.Tool.t()
+  @type external_reference() ::
+          SBoM.Cyclonedx.V13.ExternalReference.t()
+          | SBoM.Cyclonedx.V14.ExternalReference.t()
+          | SBoM.Cyclonedx.V15.ExternalReference.t()
+          | SBoM.Cyclonedx.V16.ExternalReference.t()
+          | SBoM.Cyclonedx.V17.ExternalReference.t()
   @type uuid() :: <<_::288>>
 
   @version Mix.Project.config()[:version]
@@ -72,7 +78,7 @@ defmodule SBoM.CycloneDX do
     bom
     |> Map.put(:serial_number, urn_uuid())
     |> Map.update!(:version, &(&1 + 1))
-    |> Map.update!(:metadata, &attach_metadata(&1, version))
+    |> Map.update!(:metadata, &attach_metadata(&1, version, components))
     |> Map.put(:components, bom_components)
     |> Map.put(:dependencies, attach_dependencies(components, version))
   end
@@ -102,10 +108,10 @@ defmodule SBoM.CycloneDX do
     utf8_bom <> xml_content
   end
 
-  @spec attach_metadata(metadata(), SBoM.CLI.schema_version()) :: metadata()
-  defp attach_metadata(metadata, version)
+  @spec attach_metadata(metadata(), SBoM.CLI.schema_version(), components_map()) :: metadata()
+  defp attach_metadata(metadata, version, components)
 
-  defp attach_metadata(metadata, version) when version in ["1.3", "1.4"] do
+  defp attach_metadata(metadata, version, components) when version in ["1.3", "1.4"] do
     metadata
     |> Map.put(:timestamp, Google.Protobuf.from_datetime(DateTime.utc_now()))
     |> Map.update!(:tools, fn tools ->
@@ -114,9 +120,10 @@ defmodule SBoM.CycloneDX do
       |> Enum.reject(&match?(%{name: "Mix SBoM", vendor: "Erlang Ecosystem Foundation"}, &1))
       |> then(&[tool(version) | &1])
     end)
+    |> Map.put(:component, root_component(components, version))
   end
 
-  defp attach_metadata(metadata, version) do
+  defp attach_metadata(metadata, version, components) do
     metadata
     |> Map.put(:timestamp, Google.Protobuf.from_datetime(DateTime.utc_now()))
     |> Map.update!(:tools, fn tools ->
@@ -130,6 +137,18 @@ defmodule SBoM.CycloneDX do
 
       %{tools | components: components}
     end)
+    |> Map.put(:component, root_component(components, version))
+  end
+
+  @spec root_component(components_map(), SBoM.CLI.schema_version()) ::
+          {SBoM.Fetcher.app_name(), SBoM.Fetcher.dependency()} | nil
+  def root_component(components, version) do
+    components
+    |> Enum.find(&match?({_name, %{root: true}}, &1))
+    |> case do
+      nil -> nil
+      {name, component} -> convert_component(name, component, version)
+    end
   end
 
   @spec attach_components(components_map(), SBoM.CLI.schema_version()) :: [component()]
@@ -147,33 +166,142 @@ defmodule SBoM.CycloneDX do
   defp convert_component(name, component, version) do
     purl_string = to_string(component.package_url)
 
+    source_url_reference =
+      case component[:source_url] do
+        nil -> nil
+        source_url -> source_url_reference(source_url, version)
+      end
+
+    asset_reference = asset_reference(component, version)
+
     bom_struct(:Component, version,
       type: :CLASSIFICATION_LIBRARY,
       name: name,
       version: component.package_url.version,
       purl: purl_string,
-      scope: map_scope(component.scope),
-      licenses: convert_licenses(component.metadata["license"], version),
-      bom_ref: generate_bom_ref(purl_string)
+      scope: dependency_scope(component),
+      licenses: component[:licenses] |> List.wrap() |> convert_licenses(version),
+      bom_ref: generate_bom_ref(purl_string),
+      external_references:
+        Enum.reject(
+          [
+            source_url_reference,
+            asset_reference | links_references(component[:links] || %{}, version)
+          ],
+          &is_nil/1
+        )
     )
   end
 
-  # TODO: Refactor to a format that uses seperate fields (runtime, optional, target etc to get the scope)
-  @spec map_scope(atom()) :: scope()
-  defp map_scope(:runtime), do: :SCOPE_REQUIRED
-  defp map_scope(:optional), do: :SCOPE_OPTIONAL
-  defp map_scope(_other_scope), do: :SCOPE_REQUIRED
-
-  @spec convert_licenses(String.t() | nil | term(), SBoM.CLI.schema_version()) :: license_list()
-  defp convert_licenses(nil, _version), do: []
-
-  defp convert_licenses(license, version) when is_binary(license) do
-    [
-      bom_struct(:LicenseChoice, version, choice: {:license, bom_struct(:License, version, license: {:id, license})})
-    ]
+  @spec source_url_reference(
+          source_url :: String.t(),
+          SBoM.CLI.schema_version()
+        ) :: external_reference()
+  defp source_url_reference(source_url, version) do
+    bom_struct(:ExternalReference, version,
+      type: :EXTERNAL_REFERENCE_TYPE_VCS,
+      url: source_url
+    )
   end
 
-  defp convert_licenses(_other_license, _version), do: []
+  @spec asset_reference(
+          component :: SBoM.Fetcher.dependency(),
+          SBoM.CLI.schema_version()
+        ) :: external_reference() | nil
+  defp asset_reference(component, version)
+
+  defp asset_reference(
+         %{package_url: %Purl{type: "hex", qualifiers: %{"download_url" => download_url} = qualifiers}},
+         version
+       ) do
+    bom_struct(:ExternalReference, version,
+      type: :EXTERNAL_REFERENCE_TYPE_DISTRIBUTION,
+      url: download_url,
+      hashes:
+        (
+          %{"checksum" => "sha256:" <> hash} = qualifiers
+
+          :Hash
+          |> bom_struct(version,
+            alg: :HASH_ALG_SHA_256,
+            value: hash
+          )
+          |> List.wrap()
+        )
+    )
+  end
+
+  defp asset_reference(_component, _version), do: nil
+
+  @spec links_references(
+          links :: %{optional(String.t()) => String.t()},
+          SBoM.CLI.schema_version()
+        ) :: [external_reference()]
+  defp links_references(links, version) do
+    Enum.map(links, fn {name, url} ->
+      type =
+        case String.downcase(name) do
+          source
+          when source in ["github", "gitlab", "git", "source", "repository", "bitbucket"] ->
+            :EXTERNAL_REFERENCE_TYPE_VCS
+
+          chat when chat in ["chat", "slack", "discord", "gitter"] ->
+            :EXTERNAL_REFERENCE_TYPE_CHAT
+
+          support when support in ["support", "forum"] ->
+            :EXTERNAL_REFERENCE_TYPE_SUPPORT
+
+          website when website in ["website", "home", "homepage"] ->
+            :EXTERNAL_REFERENCE_TYPE_WEBSITE
+
+          issue_tracker when issue_tracker in ["issues", "issue_tracker", "bug_tracker"] ->
+            :EXTERNAL_REFERENCE_TYPE_ISSUE_TRACKER
+
+          documentation
+          when documentation in ["docs", "documentation", "changelog", "contributing"] ->
+            :EXTERNAL_REFERENCE_TYPE_DOCUMENTATION
+
+          _other ->
+            :EXTERNAL_REFERENCE_TYPE_OTHER
+        end
+
+      bom_struct(:ExternalReference, version,
+        type: type,
+        url: url,
+        comment: name
+      )
+    end)
+  end
+
+  @spec dependency_scope(SBoM.Fetcher.dependency()) :: scope()
+  defp dependency_scope(dependency) do
+    optional? = Map.get(dependency, :optional, false)
+
+    prod? =
+      case Map.get(dependency, :only, []) do
+        :* -> true
+        only -> :prod in List.wrap(only)
+      end
+
+    cond do
+      optional? ->
+        :SCOPE_OPTIONAL
+
+      prod? ->
+        :SCOPE_REQUIRED
+
+      true ->
+        :SCOPE_EXCLUDED
+    end
+  end
+
+  @spec convert_licenses([String.t()], SBoM.CLI.schema_version()) :: license_list()
+  defp convert_licenses(licenses, version) do
+    Enum.map(
+      licenses,
+      &bom_struct(:LicenseChoice, version, choice: {:license, bom_struct(:License, version, license: {:id, &1})})
+    )
+  end
 
   @spec attach_dependencies(components_map(), SBoM.CLI.schema_version()) :: dependency_list()
   defp attach_dependencies(components, version) do

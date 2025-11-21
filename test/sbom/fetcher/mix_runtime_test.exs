@@ -15,20 +15,20 @@ defmodule SBoM.Fetcher.MixRuntimeTest do
       Util.in_project(app_path, fn _mix_module ->
         assert %{
                  decimal: %{
-                   scope: :runtime,
                    version: "2.3.0",
                    mix_config: [_decimal_one | _decimal_rest],
                    scm: Hex.SCM,
                    dependencies: [],
-                   relationship: :indirect
+                   optional: false,
+                   runtime: true
                  },
                  number: %{
-                   scope: :runtime,
                    version: "1.0.5",
                    mix_config: [_number_one | _number_rest],
                    scm: Hex.SCM,
                    dependencies: [:decimal],
-                   relationship: :direct
+                   optional: false,
+                   runtime: true
                  }
                } = MixRuntime.fetch()
       end)
@@ -39,29 +39,21 @@ defmodule SBoM.Fetcher.MixRuntimeTest do
     test "generates valid manifest (first level) for 'app_locked' fixture", %{app_path: app_path} do
       Util.in_project(app_path, fn _mix_module ->
         assert %{
-                 credo: %{
-                   scope: :runtime,
-                   version: nil,
-                   mix_config: [],
-                   scm: Hex.SCM,
-                   dependencies: [],
-                   relationship: :direct
-                 },
                  expo: %{
-                   scope: :runtime,
                    version: nil,
                    mix_config: [],
                    scm: Mix.SCM.Git,
                    dependencies: [],
-                   relationship: :direct
+                   optional: false,
+                   runtime: true
                  },
                  mime: %{
-                   scope: :runtime,
                    version: nil,
                    mix_config: [],
                    scm: Hex.SCM,
                    dependencies: [],
-                   relationship: :direct
+                   optional: false,
+                   runtime: true
                  }
                } = MixRuntime.fetch()
       end)
