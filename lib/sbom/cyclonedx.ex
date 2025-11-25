@@ -3,6 +3,7 @@ defmodule SBoM.CycloneDX do
 
   alias SBoM.CycloneDX.JSON.Encodable
   alias SBoM.CycloneDX.XML.Encodable, as: XMLEncodable
+  alias SBoM.Fetcher.Links
 
   @type t() ::
           SBoM.Cyclonedx.V13.Bom.t()
@@ -234,11 +235,12 @@ defmodule SBoM.CycloneDX do
   defp asset_reference(_component, _version), do: nil
 
   @spec links_references(
-          links :: %{optional(String.t()) => String.t()},
+          links :: %{optional(atom() | String.t()) => String.t()},
           SBoM.CLI.schema_version()
         ) :: [external_reference()]
-  defp links_references(links, version) do
-    Enum.map(links, fn {name, url} ->
+  defp links_references(links0, version) do
+    links1 = Links.normalize_keys(links0)
+    Enum.map(links1, fn {name, url} ->
       type =
         case String.downcase(name) do
           source
