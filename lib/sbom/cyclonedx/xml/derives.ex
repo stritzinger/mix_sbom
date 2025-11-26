@@ -144,55 +144,56 @@ Protocol.derive(Encodable, SBoM.Cyclonedx.V13.Bom,
 Protocol.derive(Encodable, SBoM.Cyclonedx.V17.Metadata,
   elements: [
     {:timestamp, :timestamp, :wrap},
-    {:component, :component, :unwrap},
-    {:manufacture, :manufacture, :unwrap},
-    {:supplier, :supplier, :unwrap},
-    {:manufacturer, :manufacturer, :unwrap},
+    {:lifecycles, :lifecycles, :wrap},
     {:tools, :tools, :unwrap},
     {:authors, :authors, :wrap},
+    {:component, :component, :unwrap},
+    {:manufacturer, :manufacturer, :unwrap},
+    {:manufacture, :manufacture, :unwrap},
+    {:supplier, :supplier, :unwrap},
     {:licenses, :licenses, :wrap},
     {:properties, :properties, :wrap},
-    {:lifecycles, :lifecycles, :wrap}
+    {:distributionConstraints, :distribution_constraints, :unwrap}
   ]
 )
 
 Protocol.derive(Encodable, SBoM.Cyclonedx.V16.Metadata,
   elements: [
     {:timestamp, :timestamp, :wrap},
-    {:component, :component, :unwrap},
-    {:manufacture, :manufacture, :unwrap},
-    {:supplier, :supplier, :unwrap},
-    {:manufacturer, :manufacturer, :unwrap},
+    {:lifecycles, :lifecycles, :wrap},
     {:tools, :tools, :unwrap},
     {:authors, :authors, :wrap},
+    {:component, :component, :unwrap},
+    {:manufacturer, :manufacturer, :unwrap},
+    {:manufacture, :manufacture, :unwrap},
+    {:supplier, :supplier, :unwrap},
     {:licenses, :licenses, :wrap},
-    {:properties, :properties, :wrap},
-    {:lifecycles, :lifecycles, :wrap}
+    {:properties, :properties, :wrap}
   ]
 )
 
 Protocol.derive(Encodable, SBoM.Cyclonedx.V15.Metadata,
   elements: [
     {:timestamp, :timestamp, :wrap},
+    {:lifecycles, :lifecycles, :wrap},
+    {:tools, :tools, :unwrap},
+    {:authors, :authors, :wrap},
     {:component, :component, :unwrap},
     {:manufacture, :manufacture, :unwrap},
     {:supplier, :supplier, :unwrap},
-    {:tools, :tools, :unwrap},
-    {:authors, :authors, :wrap},
     {:licenses, :licenses, :wrap},
-    {:properties, :properties, :wrap},
-    {:lifecycles, :lifecycles, :wrap}
+    {:properties, :properties, :wrap}
   ]
 )
 
 Protocol.derive(Encodable, SBoM.Cyclonedx.V14.Metadata,
   elements: [
     {:timestamp, :timestamp, :wrap},
+    {:tools, :tools, :wrap},
+    {:authors, :authors, :wrap},
     {:component, :component, :unwrap},
     {:manufacture, :manufacture, :unwrap},
     {:supplier, :supplier, :unwrap},
-    {:tools, :tools, :wrap},
-    {:authors, :authors, :wrap},
     {:licenses, :licenses, :wrap},
     {:properties, :properties, :wrap}
   ]
@@ -201,11 +202,11 @@ Protocol.derive(Encodable, SBoM.Cyclonedx.V14.Metadata,
 Protocol.derive(Encodable, SBoM.Cyclonedx.V13.Metadata,
   elements: [
     {:timestamp, :timestamp, :wrap},
+    {:tools, :tools, :wrap},
+    {:authors, :authors, :wrap},
     {:component, :component, :unwrap},
     {:manufacture, :manufacture, :unwrap},
     {:supplier, :supplier, :unwrap},
-    {:tools, :tools, :wrap},
-    {:authors, :authors, :wrap},
     {:licenses, :licenses, :wrap},
     {:properties, :properties, :wrap}
   ]
@@ -306,7 +307,7 @@ Protocol.derive(Encodable, SBoM.Cyclonedx.V13.OrganizationalEntity,
 )
 
 Protocol.derive(Encodable, SBoM.Cyclonedx.V17.LicenseChoice,
-  element_name: :licenses,
+  element_name: :license,
   attributes: [
     {:"bom-ref", :bom_ref}
   ],
@@ -431,7 +432,6 @@ Protocol.derive(Encodable, SBoM.Cyclonedx.V13.License,
   ]
 )
 
-# Dependency derives
 Protocol.derive(Encodable, SBoM.Cyclonedx.V17.Dependency,
   element_name: :dependency,
   attributes: [
