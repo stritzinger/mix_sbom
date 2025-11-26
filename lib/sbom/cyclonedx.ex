@@ -266,7 +266,11 @@ defmodule SBoM.CycloneDX do
           SBoM.CLI.schema_version()
         ) :: [external_reference()]
   defp links_references(links, version) do
-    Enum.map(links, fn {name, url} ->
+    alias SBoM.Fetcher.Links
+
+    links
+    |> Links.normalize_link_keys()
+    |> Enum.map(fn {name, url} ->
       type =
         case String.downcase(name) do
           source

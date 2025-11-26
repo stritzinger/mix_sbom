@@ -133,6 +133,58 @@ defmodule SBoM.Fetcher.MixFileTest do
     end
 
     @tag :tmp_dir
+    @tag fixture_app: "app_atom_links"
+    test "generates valid manifest for 'app_atom_links' fixture", %{app_path: app_path} do
+      Util.in_project(app_path, fn _mix_module ->
+        assert %{
+                 app_atom_links: %{
+                   runtime: true,
+                   optional: false,
+                   targets: :*,
+                   only: :*,
+                   dependencies: [:elixir, :phoenix, :phoenix_html, :phoenix_html_helpers],
+                   root: true,
+                   source_url: "https://github.com/app_atom_links"
+                 },
+                 phoenix: %{
+                   mix_dep:
+                     {:phoenix, "~> 1.6", [hex: "phoenix", build: _phoenix_build, dest: _phoenix_dest, repo: "hexpm"]},
+                   scm: Hex.SCM,
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
+                 },
+                 phoenix_html: %{
+                   mix_dep:
+                     {:phoenix_html, "~> 4.0",
+                      [hex: "phoenix_html", build: _phoenix_html_build, dest: _phoenix_html_dest, repo: "hexpm"]},
+                   scm: Hex.SCM,
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
+                 },
+                 phoenix_html_helpers: %{
+                   mix_dep:
+                     {:phoenix_html_helpers, "~> 1.0",
+                      [
+                        hex: "phoenix_html_helpers",
+                        build: _phoenix_html_helpers_build,
+                        dest: _phoenix_html_helpers_dest,
+                        repo: "hexpm"
+                      ]},
+                   scm: Hex.SCM,
+                   runtime: true,
+                   optional: false,
+                   only: :*,
+                   targets: :*
+                 }
+               } = MixFile.fetch()
+      end)
+    end
+
+    @tag :tmp_dir
     test "skips manifest for project without mix.exs", %{tmp_dir: tmp_dir} do
       Util.in_project(tmp_dir, fn _mix_module ->
         assert nil == MixFile.fetch()

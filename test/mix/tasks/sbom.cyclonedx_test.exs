@@ -45,7 +45,7 @@ defmodule Mix.Tasks.Sbom.CyclonedxTest do
   end
 
   @tag :tmp_dir
-  @tag fixture_app: "sample1"
+  @tag fixture_app: "app_atom_links"
   test "schema validation", %{app_path: app_path} do
     Util.in_project(app_path, fn _mix_module ->
       Mix.Task.rerun("sbom.cyclonedx", ["-d", "-f", "-s", "1.3"])
