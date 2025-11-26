@@ -18,7 +18,8 @@ defmodule SBoM.CLI do
           format: format(),
           classification: String.t(),
           path: Path.t(),
-          help: boolean()
+          help: boolean(),
+          lockfile_only: boolean()
         ]
   @type format() :: :xml | :json | :protobuf
   @type schema_version() :: String.t()
@@ -34,10 +35,12 @@ defmodule SBoM.CLI do
   @default_format :json
   @default_schema "1.6"
   @default_classification "application"
+  @default_lockfile_only false
 
   @default_opts [
     schema: @default_schema,
-    classification: @default_classification
+    classification: @default_classification,
+    lockfile_only: @default_lockfile_only
   ]
 
   @spec parse_and_validate_opts(OptionParser.argv(), cli_mode()) :: cli_opts()
@@ -83,7 +86,8 @@ defmodule SBoM.CLI do
 
   @spec _generate_bom_content(cli_opts()) :: iodata()
   defp _generate_bom_content(opts) do
-    Fetcher.fetch()
+    lockfile_only = Keyword.get(opts, :lockfile_only, @default_lockfile_only)
+    Fetcher.fetch(lockfile_only)
     |> CycloneDX.bom(CycloneDX.empty(opts[:schema]))
     |> CycloneDX.encode(opts[:format])
   end
@@ -99,7 +103,8 @@ defmodule SBoM.CLI do
           r: :recurse,
           s: :schema,
           t: :format,
-          c: :classification
+          c: :classification,
+          l: :lockfile_only
         ],
         strict: [
           output: :string,
@@ -108,7 +113,8 @@ defmodule SBoM.CLI do
           recurse: :boolean,
           schema: :string,
           format: :string,
-          classification: :string
+          classification: :string,
+          lockfile_only: :boolean
         ]
       )
   end
@@ -122,7 +128,8 @@ defmodule SBoM.CLI do
         s: :schema,
         t: :format,
         c: :classification,
-        h: :help
+        h: :help,
+        l: :lockfile_only
       ],
       strict: [
         output: :string,
@@ -131,7 +138,8 @@ defmodule SBoM.CLI do
         schema: :string,
         format: :string,
         classification: :string,
-        help: :boolean
+        help: :boolean,
+        lockfile_only: :boolean
       ]
     )
   end

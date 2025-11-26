@@ -63,6 +63,8 @@ defmodule SBoM.Fetcher do
 
   @manifest_fetchers [__MODULE__.MixFile, __MODULE__.MixLock, __MODULE__.MixRuntime]
 
+  @lockfile_manifest_fetchers [__MODULE__.MixFile, __MODULE__.MixLock ]
+
   @static_deps %{
     elixir: %{
       scm: SBoM.SCM.System,
@@ -112,9 +114,11 @@ defmodule SBoM.Fetcher do
 
   Note: This test assumes an Elixir project that is currently loaded.
   """
-  @spec fetch() :: %{String.t() => dependency()} | nil
-  def fetch do
-    @manifest_fetchers
+  @spec fetch(lockfile_only :: boolean()) :: %{String.t() => dependency()} | nil
+  def fetch(lockfile_only) do
+    fetchers = if lockfile_only, do: @lockfile_manifest_fetchers, else: @manifest_fetchers
+
+    fetchers
     |> Enum.map(& &1.fetch())
     |> Enum.reduce(nil, fn
       nil, acc ->

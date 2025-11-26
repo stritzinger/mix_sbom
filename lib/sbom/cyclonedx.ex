@@ -91,7 +91,7 @@ defmodule SBoM.CycloneDX do
   def encode(bom, :json) do
     bom
     |> Encodable.to_encodable()
-    |> Jason.encode!(pretty: true)
+    |> :json.format()
   end
 
   def encode(bom, :xml) do
